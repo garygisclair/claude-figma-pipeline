@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Status",
+    "renderType": "svg",
+    "variantProperties": {
+      "status": [
+        "pending",
+        "canceled",
+        "draft",
+        "rejected",
+        "submitted"
+      ]
+    },
+    "variants": [
+      {
+        "name": "status=pending",
+        "width": 12,
+        "height": 12,
+        "svg": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"6\" r=\"6\" fill=\"#f7b100\"/></svg>"
+      },
+      {
+        "name": "status=canceled",
+        "width": 12,
+        "height": 12,
+        "svg": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"6\" r=\"6\" fill=\"#767676\"/></svg>"
+      },
+      {
+        "name": "status=draft",
+        "width": 12,
+        "height": 12,
+        "svg": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"6\" r=\"6\" fill=\"#c7c7c7\"/></svg>"
+      },
+      {
+        "name": "status=rejected",
+        "width": 12,
+        "height": 12,
+        "svg": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"6\" r=\"6\" fill=\"#e62048\"/></svg>"
+      },
+      {
+        "name": "status=submitted",
+        "width": 12,
+        "height": 12,
+        "svg": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"6\" r=\"6\" fill=\"#28a443\"/></svg>"
+      }
+    ]
+  }
+]

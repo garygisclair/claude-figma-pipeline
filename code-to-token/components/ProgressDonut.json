@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Progress Donut",
+    "renderType": "svg",
+    "variantProperties": {
+      "progress": [
+        "0",
+        "25",
+        "50",
+        "75",
+        "100"
+      ]
+    },
+    "variants": [
+      {
+        "name": "progress=0",
+        "width": 24,
+        "height": 24,
+        "svg": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#c7c7c7\"/></svg>"
+      },
+      {
+        "name": "progress=25",
+        "width": 24,
+        "height": 24,
+        "svg": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#c7c7c7\"/><path d=\"M12,0 A12,12 0 0,1 24,12 L21,12 A9,9 0 0,0 12,3 Z\" fill=\"#119c4b\"/></svg>"
+      },
+      {
+        "name": "progress=50",
+        "width": 24,
+        "height": 24,
+        "svg": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#c7c7c7\"/><path d=\"M12,0 A12,12 0 0,1 12,24 L12,21 A9,9 0 0,0 12,3 Z\" fill=\"#119c4b\"/></svg>"
+      },
+      {
+        "name": "progress=75",
+        "width": 24,
+        "height": 24,
+        "svg": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#c7c7c7\"/><path d=\"M12,0 A12,12 0 1,1 0,12 L3,12 A9,9 0 1,0 12,3 Z\" fill=\"#119c4b\"/></svg>"
+      },
+      {
+        "name": "progress=100",
+        "width": 24,
+        "height": 24,
+        "svg": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#c7c7c7\"/><path d=\"M24,12 A12,12 0 1,1 0,12 A12,12 0 1,1 24,12 M21,12 A9,9 0 1,0 3,12 A9,9 0 1,0 21,12 Z\" fill=\"#119c4b\"/></svg>"
+      }
+    ]
+  }
+]

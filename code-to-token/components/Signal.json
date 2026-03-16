@@ -1,0 +1,36 @@
+{
+  "name": "Signal",
+  "renderType": "single",
+  "componentProperties": {
+    "label": { "type": "TEXT", "defaultValue": "NEW" }
+  },
+  "base": {
+    "layoutMode": "HORIZONTAL",
+    "primaryAxisAlignItems": "CENTER",
+    "counterAxisAlignItems": "CENTER",
+    "primaryAxisSizingMode": "AUTO",
+    "counterAxisSizingMode": "AUTO",
+    "paddingTop": 4,
+    "paddingBottom": 4,
+    "paddingLeft": 8,
+    "paddingRight": 8,
+    "cornerRadius": 48,
+    "fillColor": { "var": "Background/Accent-subtle", "fallback": "#d4e5fe" },
+    "fontFamily": "Market Sans"
+  },
+  "children": [
+    {
+      "name": "label",
+      "type": "TEXT",
+      "fontFamily": "Market Sans",
+      "fontStyle": "Bold",
+      "fontSize": 10,
+      "lineHeight": 12,
+      "letterSpacing": 0.5,
+      "textCase": "UPPER",
+      "textColor": { "fallback": "#002a69" },
+      "characters": "NEW",
+      "propertyRef": { "characters": "label" }
+    }
+  ]
+}

@@ -387,6 +387,8 @@ async function importComponents(specs: ComponentSpec[]) {
       if (spec.base.height && spec.base.counterAxisSizingMode === 'FIXED') {
         singleComp.resize(singleComp.width, spec.base.height)
       }
+      if (spec.base.cornerRadius != null) singleComp.cornerRadius = spec.base.cornerRadius
+      if (spec.base.fillColor) singleComp.fills = [makeBoundPaint(spec.base.fillColor)]
 
       // Create component properties first
       var singlePropKeys: Record<string, string> = {}
@@ -469,6 +471,8 @@ async function importComponents(specs: ComponentSpec[]) {
             textNode.fontName = textFont
             textNode.fontSize = childSpec.fontSize || 14
             if (childSpec.lineHeight) textNode.lineHeight = { value: childSpec.lineHeight, unit: 'PIXELS' }
+            if (childSpec.letterSpacing) textNode.letterSpacing = { value: childSpec.letterSpacing, unit: 'PIXELS' }
+            if (childSpec.textCase === 'UPPER') textNode.textCase = 'UPPER'
             textNode.characters = childSpec.characters || ''
             if (childSpec.textColor) textNode.fills = [makeBoundPaint(childSpec.textColor)]
             if (childSpec.visible === false) textNode.visible = false
