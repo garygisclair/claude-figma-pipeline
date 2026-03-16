@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "typeRoots": ["node_modules/@figma"]
+  },
+  "include": ["src/**/*.ts"]
+}

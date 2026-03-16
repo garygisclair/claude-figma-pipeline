@@ -1,0 +1,11 @@
+{
+  "name": "claude-figma-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Code → Token → Figma pipeline. Extracts design tokens from code, imports them into Figma as variables, styles, and components.",
+  "scripts": {
+    "parse:tokens": "node code-to-token/parse-tokens.mjs",
+    "parse:icons": "node code-to-token/parse-icons.mjs",
+    "build:plugin": "cd token-to-figma && npm run build"
+  }
+}

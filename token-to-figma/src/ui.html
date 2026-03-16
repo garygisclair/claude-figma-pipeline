@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 13px;
+      color: #333;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100vh;
+    }
+    h2 { font-size: 15px; font-weight: 600; }
+    .description { color: #666; line-height: 1.4; }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: #333; }
+    .tab.active { color: #0968f6; border-bottom-color: #0968f6; }
+
+    .tab-content { display: none; flex-direction: column; gap: 12px; flex: 1; }
+    .tab-content.active { display: flex; }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #0968f6;
+      background: #f0f6ff;
+    }
+    .drop-zone.loaded {
+      border-color: #288034;
+      background: #f0faf0;
+    }
+    .preview {
+      font-family: monospace;
+      font-size: 11px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.4;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { background: #f5f5f5; }
+    button.primary {
+      background: #0968f6;
+      color: #fff;
+      border-color: #0968f6;
+    }
+    button.primary:hover { background: #0752c8; }
+    button.primary:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .status.success { background: #e0fae0; color: #1a5c1a; }
+    .status.error { background: #fde8e8; color: #991b1b; }
+    input[type="file"] { display: none; }
+  </style>
+</head>
+<body>
+  <h2>Token to Figma</h2>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tokens')">Tokens</div>
+    <div class="tab" onclick="switchTab('icons')">Icons</div>
+    <div class="tab" onclick="switchTab('components')">Components</div>
+  </div>
+
+  <!-- Tokens tab -->
+  <div class="tab-content active" id="tab-tokens">
+    <p class="description">
+      Import variables, effect styles, and text styles.
+    </p>
+    <div class="drop-zone" id="dropZoneTokens">
+      <span>Drop tokens.json here or click to browse</span>
+    </div>
+    <input type="file" id="fileInputTokens" accept=".json" />
+    <div class="preview" id="previewTokens" style="display:none"></div>
+    <div class="status" id="statusTokens" style="display:none"></div>
+    <div class="actions">
+      <button onclick="parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')">Cancel</button>
+      <button class="primary" id="importTokensBtn" disabled onclick="doImportTokens()">Import Tokens</button>
+    </div>
+  </div>
+
+  <!-- Icons tab -->
+  <div class="tab-content" id="tab-icons">
+    <p class="description">
+      Import SVG icons as Figma components from <code>icons.json</code>.
+    </p>
+    <div class="drop-zone" id="dropZoneIcons">
+      <span>Drop icons.json here or click to browse</span>
+    </div>
+    <input type="file" id="fileInputIcons" accept=".json" />
+    <div class="preview" id="previewIcons" style="display:none"></div>
+    <div class="status" id="statusIcons" style="display:none"></div>
+    <div class="actions">
+      <button onclick="parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')">Cancel</button>
+      <button class="primary" id="importIconsBtn" disabled onclick="doImportIcons()">Import Icons</button>
+    </div>
+  </div>
+
+  <!-- Components tab -->
+  <div class="tab-content" id="tab-components">
+    <p class="description">
+      Import component specs. Uses existing variables from the file.
+    </p>
+    <div class="drop-zone" id="dropZoneComponents">
+      <span>Drop component .json here or click to browse</span>
+    </div>
+    <input type="file" id="fileInputComponents" accept=".json" />
+    <div class="preview" id="previewComponents" style="display:none"></div>
+    <div class="status" id="statusComponents" style="display:none"></div>
+    <div class="actions">
+      <button onclick="parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')">Cancel</button>
+      <button class="primary" id="importComponentsBtn" disabled onclick="doImportComponents()">Import Components</button>
+    </div>
+  </div>
+
+  <script>
+    let tokenData = null
+    let componentData = null
+
+    var tabOrder = ['tokens', 'icons', 'components']
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+      document.querySelector('.tab-content#tab-' + tab).classList.add('active')
+      document.querySelectorAll('.tab')[tabOrder.indexOf(tab)].classList.add('active')
+    }
+
+    // ── Tokens tab ──────────────────────────────
+    var dropZoneTokens = document.getElementById('dropZoneTokens')
+    var fileInputTokens = document.getElementById('fileInputTokens')
+    var previewTokens = document.getElementById('previewTokens')
+    var importTokensBtn = document.getElementById('importTokensBtn')
+    var statusTokens = document.getElementById('statusTokens')
+
+    dropZoneTokens.addEventListener('click', function() { fileInputTokens.click() })
+    dropZoneTokens.addEventListener('dragover', function(e) { e.preventDefault(); dropZoneTokens.classList.add('dragover') })
+    dropZoneTokens.addEventListener('dragleave', function() { dropZoneTokens.classList.remove('dragover') })
+    dropZoneTokens.addEventListener('drop', function(e) {
+      e.preventDefault(); dropZoneTokens.classList.remove('dragover')
+      if (e.dataTransfer.files.length) loadTokenFile(e.dataTransfer.files[0])
+    })
+    fileInputTokens.addEventListener('change', function() {
+      if (fileInputTokens.files.length) loadTokenFile(fileInputTokens.files[0])
+    })
+
+    function loadTokenFile(file) {
+      var reader = new FileReader()
+      reader.onload = function(e) {
+        try {
+          tokenData = JSON.parse(e.target.result)
+          // Strip components from token payload — those go in the other tab
+          delete tokenData.components
+
+          var collections = Object.keys(tokenData.collections)
+          var totalTokens = collections.reduce(function(sum, c) {
+            return sum + Object.keys(tokenData.collections[c]).length
+          }, 0)
+
+          dropZoneTokens.classList.add('loaded')
+          dropZoneTokens.innerHTML = '<span>\u2713 ' + file.name + '</span>'
+
+          var lines = collections.map(function(c) {
+            return c + ': ' + Object.keys(tokenData.collections[c]).length + ' tokens'
+          })
+          var effectCount = tokenData.effectStyles ? Object.keys(tokenData.effectStyles).length : 0
+          var textStyleCount = tokenData.textStyles ? Object.keys(tokenData.textStyles).length : 0
+          if (effectCount) lines.push('Effect styles: ' + effectCount)
+          if (textStyleCount) lines.push('Text styles: ' + textStyleCount)
+          var extras = []
+          if (effectCount) extras.push(effectCount + ' effects')
+          if (textStyleCount) extras.push(textStyleCount + ' text styles')
+          lines.push('\u2500\u2500\u2500\u2500\u2500', 'Total: ' + totalTokens + ' tokens' + (extras.length ? ' + ' + extras.join(' + ') : ''))
+
+          previewTokens.style.display = 'block'
+          previewTokens.textContent = lines.join('\n')
+          importTokensBtn.disabled = false
+          statusTokens.style.display = 'none'
+        } catch (err) {
+          showStatus('statusTokens', 'Invalid JSON: ' + err.message, 'error')
+        }
+      }
+      reader.readAsText(file)
+    }
+
+    function doImportTokens() {
+      if (!tokenData) return
+      importTokensBtn.disabled = true
+      importTokensBtn.textContent = 'Importing\u2026'
+      parent.postMessage({ pluginMessage: { type: 'import-tokens', payload: tokenData } }, '*')
+    }
+
+    // ── Icons tab ────────────────────────────────
+    var iconData = null
+    var dropZoneIcons = document.getElementById('dropZoneIcons')
+    var fileInputIcons = document.getElementById('fileInputIcons')
+    var previewIcons = document.getElementById('previewIcons')
+    var importIconsBtn = document.getElementById('importIconsBtn')
+    var statusIcons = document.getElementById('statusIcons')
+
+    dropZoneIcons.addEventListener('click', function() { fileInputIcons.click() })
+    dropZoneIcons.addEventListener('dragover', function(e) { e.preventDefault(); dropZoneIcons.classList.add('dragover') })
+    dropZoneIcons.addEventListener('dragleave', function() { dropZoneIcons.classList.remove('dragover') })
+    dropZoneIcons.addEventListener('drop', function(e) {
+      e.preventDefault(); dropZoneIcons.classList.remove('dragover')
+      if (e.dataTransfer.files.length) loadIconFile(e.dataTransfer.files[0])
+    })
+    fileInputIcons.addEventListener('change', function() {
+      if (fileInputIcons.files.length) loadIconFile(fileInputIcons.files[0])
+    })
+
+    function loadIconFile(file) {
+      var reader = new FileReader()
+      reader.onload = function(e) {
+        try {
+          var raw = JSON.parse(e.target.result)
+          if (!raw.categories && !raw.icons) {
+            throw new Error('Expected categories or icons array in JSON')
+          }
+          iconData = raw
+
+          var lines = []
+          var total = 0
+          if (raw.categories) {
+            for (var ci = 0; ci < raw.categories.length; ci++) {
+              lines.push(raw.categories[ci].title + ': ' + raw.categories[ci].icons.length + ' icons')
+              total += raw.categories[ci].icons.length
+            }
+          } else {
+            total = raw.icons.length
+          }
+          lines.push('\u2500\u2500\u2500\u2500\u2500', total + ' total icons')
+
+          dropZoneIcons.classList.add('loaded')
+          dropZoneIcons.innerHTML = '<span>\u2713 ' + file.name + '</span>'
+          previewIcons.style.display = 'block'
+          previewIcons.textContent = lines.join('\n')
+          importIconsBtn.disabled = false
+          statusIcons.style.display = 'none'
+        } catch (err) {
+          showStatus('statusIcons', 'Invalid JSON: ' + err.message, 'error')
+        }
+      }
+      reader.readAsText(file)
+    }
+
+    function doImportIcons() {
+      if (!iconData) return
+      importIconsBtn.disabled = true
+      importIconsBtn.textContent = 'Importing\u2026'
+      parent.postMessage({ pluginMessage: { type: 'import-icons', payload: iconData } }, '*')
+    }
+
+    // ── Components tab ──────────────────────────
+    var dropZoneComponents = document.getElementById('dropZoneComponents')
+    var fileInputComponents = document.getElementById('fileInputComponents')
+    var previewComponents = document.getElementById('previewComponents')
+    var importComponentsBtn = document.getElementById('importComponentsBtn')
+    var statusComponents = document.getElementById('statusComponents')
+
+    dropZoneComponents.addEventListener('click', function() { fileInputComponents.click() })
+    dropZoneComponents.addEventListener('dragover', function(e) { e.preventDefault(); dropZoneComponents.classList.add('dragover') })
+    dropZoneComponents.addEventListener('dragleave', function() { dropZoneComponents.classList.remove('dragover') })
+    dropZoneComponents.addEventListener('drop', function(e) {
+      e.preventDefault(); dropZoneComponents.classList.remove('dragover')
+      if (e.dataTransfer.files.length) loadComponentFile(e.dataTransfer.files[0])
+    })
+    fileInputComponents.addEventListener('change', function() {
+      if (fileInputComponents.files.length) loadComponentFile(fileInputComponents.files[0])
+    })
+
+    function loadComponentFile(file) {
+      var reader = new FileReader()
+      reader.onload = function(e) {
+        try {
+          var raw = JSON.parse(e.target.result)
+          var specs
+
+          // Detect format: tokens.json with components array, array of specs, or single spec
+          if (raw.components && Array.isArray(raw.components)) {
+            specs = raw.components
+          } else if (Array.isArray(raw)) {
+            specs = raw
+          } else if (raw.variantProperties) {
+            specs = [raw]
+          } else {
+            throw new Error('No component specs found. Expected a file with variantProperties or a components array.')
+          }
+
+          componentData = specs
+
+          var lines = specs.map(function(s) {
+            var vp = s.variantProperties || {}
+            var styles = vp.style ? vp.style.length : 0
+            var sizes = vp.size ? vp.size.length : 0
+            var states = vp.state ? vp.state.length : 0
+            return s.name + ': ' + (styles * sizes * states) + ' variants (' + styles + ' styles \u00d7 ' + sizes + ' sizes \u00d7 ' + states + ' states)'
+          })
+          lines.push('\u2500\u2500\u2500\u2500\u2500', specs.length + ' component(s)')
+
+          dropZoneComponents.classList.add('loaded')
+          dropZoneComponents.innerHTML = '<span>\u2713 ' + file.name + '</span>'
+          previewComponents.style.display = 'block'
+          previewComponents.textContent = lines.join('\n')
+          importComponentsBtn.disabled = false
+          statusComponents.style.display = 'none'
+        } catch (err) {
+          showStatus('statusComponents', 'Invalid JSON: ' + err.message, 'error')
+        }
+      }
+      reader.readAsText(file)
+    }
+
+    function doImportComponents() {
+      if (!componentData) return
+      importComponentsBtn.disabled = true
+      importComponentsBtn.textContent = 'Creating\u2026'
+      parent.postMessage({ pluginMessage: { type: 'import-components', payload: componentData } }, '*')
+    }
+
+    // ── Shared ──────────────────────────────────
+    function showStatus(id, msg, type) {
+      var el = document.getElementById(id)
+      el.style.display = 'block'
+      el.className = 'status ' + type
+      el.textContent = msg
+    }
+
+    window.onmessage = function(e) {
+      var msg = e.data.pluginMessage
+      if (!msg) return
+
+      if (msg.type === 'result-tokens') {
+        var parts = ['Created ' + msg.variables + ' variables across ' + msg.collections + ' collections']
+        if (msg.modes) parts.push(msg.modes + ' dark modes added')
+        if (msg.effectStyles) parts.push(msg.effectStyles + ' effect styles')
+        if (msg.textStyles) parts.push(msg.textStyles + ' text styles')
+        showStatus('statusTokens', parts.join(', ') + '.', 'success')
+        importTokensBtn.textContent = 'Done \u2713'
+      }
+
+      if (msg.type === 'result-icons') {
+        var iconDebug = msg.debug || ''
+        var iconSummary = 'Created ' + msg.icons + ' icon components'
+        if (msg.failed) iconSummary += ' (' + msg.failed + ' failed)'
+        showStatus('statusIcons', iconDebug ? iconDebug + '\n\u2500\u2500\u2500\n' + iconSummary : iconSummary, msg.failed ? 'error' : 'success')
+        importIconsBtn.textContent = 'Done \u2713'
+      }
+
+      if (msg.type === 'result-components') {
+        var debugInfo = msg.debug || ''
+        var summary = 'Created ' + msg.components + ' component(s) with ' + msg.variants + ' total variants.'
+        showStatus('statusComponents', debugInfo ? debugInfo + '\n\u2500\u2500\u2500\n' + summary : summary, 'success')
+        importComponentsBtn.textContent = 'Done \u2713'
+      }
+
+      if (msg.type === 'error') {
+        showStatus('statusTokens', 'Error: ' + msg.message, 'error')
+        showStatus('statusComponents', 'Error: ' + msg.message, 'error')
+        importTokensBtn.disabled = false
+        importTokensBtn.textContent = 'Import Tokens'
+        importComponentsBtn.disabled = false
+        importComponentsBtn.textContent = 'Import Components'
+      }
+    }
+  </script>
+</body>
+</html>
