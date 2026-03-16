@@ -1,0 +1,68 @@
+{
+  "name": "Input Help Text",
+  "renderType": "single",
+  "componentProperties": {
+    "helpText": { "type": "TEXT", "defaultValue": "Helper text goes here" },
+    "showHelpText": { "type": "BOOLEAN", "defaultValue": true },
+    "characterCount": { "type": "TEXT", "defaultValue": "0/100" },
+    "showCount": { "type": "BOOLEAN", "defaultValue": true },
+    "error": { "type": "BOOLEAN", "defaultValue": false }
+  },
+  "base": {
+    "layoutMode": "HORIZONTAL",
+    "counterAxisAlignItems": "MIN",
+    "primaryAxisAlignItems": "MAX",
+    "primaryAxisSizingMode": "FIXED",
+    "counterAxisSizingMode": "AUTO",
+    "itemSpacing": 16,
+    "paddingTop": 8,
+    "width": 320,
+    "fontFamily": "Market Sans"
+  },
+  "children": [
+    {
+      "name": "helper",
+      "type": "FRAME",
+      "layoutMode": "HORIZONTAL",
+      "counterAxisAlignItems": "CENTER",
+      "primaryAxisSizingMode": "FILL",
+      "counterAxisSizingMode": "AUTO",
+      "itemSpacing": 8,
+      "fills": [],
+      "propertyRef": { "visible": "showHelpText" },
+      "children": [
+        {
+          "name": "error-icon",
+          "type": "ICON_INSTANCE",
+          "iconName": "attention-fill-16",
+          "size": 16,
+          "visible": false,
+          "propertyRef": { "visible": "error" }
+        },
+        {
+          "name": "helpText",
+          "type": "TEXT",
+          "fontFamily": "Market Sans",
+          "fontStyle": "Regular",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "textColor": { "var": "Foreground/Secondary", "fallback": "#707070" },
+          "characters": "Helper text goes here",
+          "layoutGrow": 1,
+          "propertyRef": { "characters": "helpText" }
+        }
+      ]
+    },
+    {
+      "name": "count",
+      "type": "TEXT",
+      "fontFamily": "Market Sans",
+      "fontStyle": "Regular",
+      "fontSize": 12,
+      "lineHeight": 16,
+      "textColor": { "var": "Foreground/Secondary", "fallback": "#707070" },
+      "characters": "0/100",
+      "propertyRef": { "characters": "characterCount", "visible": "showCount" }
+    }
+  ]
+}

@@ -357,11 +357,256 @@ function findVariant(variants: ComponentNode[], state: string, size: string, sty
 
 async function importComponents(specs: ComponentSpec[]) {
   var stats: Record<string, any> = { components: 0, variants: 0 }
+  var componentOffsetY = 0
 
   for (var ci = 0; ci < specs.length; ci++) {
-    var spec = specs[ci]
+    var spec = specs[ci] as any
     var variants: ComponentNode[] = []
 
+    // Single component (no variants, just properties)
+    if (spec.renderType === 'single' && spec.children) {
+      var debugLog: string[] = []
+      debugLog.push(spec.name + ': single component')
+
+      var singleComp = figma.createComponent()
+      singleComp.name = spec.name
+      singleComp.fills = []
+
+      // Layout
+      if (spec.base.layoutMode) singleComp.layoutMode = spec.base.layoutMode as 'HORIZONTAL' | 'VERTICAL'
+      if (spec.base.primaryAxisAlignItems) singleComp.primaryAxisAlignItems = spec.base.primaryAxisAlignItems as any
+      if (spec.base.counterAxisAlignItems) singleComp.counterAxisAlignItems = spec.base.counterAxisAlignItems as any
+      if (spec.base.primaryAxisSizingMode) singleComp.primaryAxisSizingMode = spec.base.primaryAxisSizingMode as any
+      if (spec.base.counterAxisSizingMode) singleComp.counterAxisSizingMode = spec.base.counterAxisSizingMode as any
+      if (spec.base.itemSpacing != null) singleComp.itemSpacing = spec.base.itemSpacing
+      if (spec.base.paddingTop != null) singleComp.paddingTop = spec.base.paddingTop
+      if (spec.base.paddingBottom != null) singleComp.paddingBottom = spec.base.paddingBottom
+      if (spec.base.paddingLeft != null) singleComp.paddingLeft = spec.base.paddingLeft
+      if (spec.base.paddingRight != null) singleComp.paddingRight = spec.base.paddingRight
+      if (spec.base.width) singleComp.resize(spec.base.width, spec.base.height || 20)
+      if (spec.base.height && spec.base.counterAxisSizingMode === 'FIXED') {
+        singleComp.resize(singleComp.width, spec.base.height)
+      }
+
+      // Create component properties first
+      var singlePropKeys: Record<string, string> = {}
+      if (spec.componentProperties) {
+        var cpEntries = Object.entries(spec.componentProperties)
+        for (var cpi = 0; cpi < cpEntries.length; cpi++) {
+          var cpName = (cpEntries[cpi] as any)[0] as string
+          var cpDef = (cpEntries[cpi] as any)[1] as any
+          try {
+            if (cpDef.type === 'BOOLEAN') {
+              singlePropKeys[cpName] = singleComp.addComponentProperty(cpName, 'BOOLEAN', cpDef.defaultValue === true)
+              debugLog.push('Created BOOLEAN: ' + cpName)
+            } else if (cpDef.type === 'TEXT') {
+              singlePropKeys[cpName] = singleComp.addComponentProperty(cpName, 'TEXT', cpDef.defaultValue || '')
+              debugLog.push('Created TEXT: ' + cpName)
+            }
+          } catch (e: any) {
+            debugLog.push('FAILED prop ' + cpName + ': ' + e.message)
+          }
+        }
+      }
+
+      // Build children recursively
+      async function buildChildren(parentNode: FrameNode | ComponentNode, childSpecs: any[]) {
+        for (var chi = 0; chi < childSpecs.length; chi++) {
+          var childSpec = childSpecs[chi]
+
+          if (childSpec.type === 'FRAME') {
+            var frame = figma.createFrame()
+            frame.name = childSpec.name || 'frame'
+            frame.fills = childSpec.fills || []
+            if (childSpec.layoutMode) frame.layoutMode = childSpec.layoutMode as any
+            if (childSpec.primaryAxisAlignItems) frame.primaryAxisAlignItems = childSpec.primaryAxisAlignItems as any
+            if (childSpec.counterAxisAlignItems) frame.counterAxisAlignItems = childSpec.counterAxisAlignItems as any
+            if (childSpec.primaryAxisSizingMode === 'FILL') {
+              // FILL is set via layoutGrow after appending
+            } else if (childSpec.primaryAxisSizingMode) {
+              frame.primaryAxisSizingMode = childSpec.primaryAxisSizingMode as any
+            }
+            if (childSpec.counterAxisSizingMode) frame.counterAxisSizingMode = childSpec.counterAxisSizingMode as any
+            if (childSpec.itemSpacing != null) frame.itemSpacing = childSpec.itemSpacing
+            if (childSpec.visible === false) frame.visible = false
+            parentNode.appendChild(frame)
+
+            // Set FILL after appending to auto-layout parent
+            if (childSpec.primaryAxisSizingMode === 'FILL' || childSpec.layoutGrow === 1) {
+              frame.layoutGrow = 1
+            }
+
+            // Wire property references on frame (e.g. visibility toggle)
+            if (childSpec.propertyRef) {
+              var frameRefs: Record<string, string> = {}
+              for (var frKey of Object.keys(childSpec.propertyRef)) {
+                var frPropName = childSpec.propertyRef[frKey]
+                if (singlePropKeys[frPropName]) {
+                  frameRefs[frKey] = singlePropKeys[frPropName]
+                }
+              }
+              if (Object.keys(frameRefs).length > 0) {
+                frame.componentPropertyReferences = frameRefs
+              }
+            }
+
+            if (childSpec.children) {
+              await buildChildren(frame, childSpec.children)
+            }
+          } else if (childSpec.type === 'TEXT') {
+            var fontStyle2 = childSpec.fontStyle || 'Regular'
+            var textFont: FontName = { family: childSpec.fontFamily || spec.base.fontFamily, style: fontStyle2 }
+            try { await figma.loadFontAsync(textFont) } catch (e) {
+              textFont = { family: 'Inter', style: fontStyle2 }
+              try { await figma.loadFontAsync(textFont) } catch (e2) {
+                textFont = { family: 'Inter', style: 'Regular' }
+                await figma.loadFontAsync(textFont)
+              }
+            }
+
+            var textNode = figma.createText()
+            textNode.name = childSpec.name || 'text'
+            textNode.fontName = textFont
+            textNode.fontSize = childSpec.fontSize || 14
+            if (childSpec.lineHeight) textNode.lineHeight = { value: childSpec.lineHeight, unit: 'PIXELS' }
+            textNode.characters = childSpec.characters || ''
+            if (childSpec.textColor) textNode.fills = [makeBoundPaint(childSpec.textColor)]
+            if (childSpec.visible === false) textNode.visible = false
+            parentNode.appendChild(textNode)
+            if (childSpec.layoutGrow === 1) textNode.layoutGrow = 1
+
+            // Wire property references
+            if (childSpec.propertyRef) {
+              var refs: Record<string, string> = {}
+              for (var prKey of Object.keys(childSpec.propertyRef)) {
+                var propName2 = childSpec.propertyRef[prKey]
+                if (singlePropKeys[propName2]) {
+                  refs[prKey] = singlePropKeys[propName2]
+                }
+              }
+              if (Object.keys(refs).length > 0) {
+                textNode.componentPropertyReferences = refs
+              }
+            }
+          } else if (childSpec.type === 'ICON_INSTANCE') {
+            var iconComp = findComponent(childSpec.iconName)
+            if (iconComp) {
+              var iconInst = iconComp.createInstance()
+              iconInst.name = childSpec.name || childSpec.iconName
+              if (childSpec.visible === false) iconInst.visible = false
+              parentNode.appendChild(iconInst)
+
+              if (childSpec.propertyRef && childSpec.propertyRef.visible && singlePropKeys[childSpec.propertyRef.visible]) {
+                iconInst.componentPropertyReferences = { visible: singlePropKeys[childSpec.propertyRef.visible] }
+              }
+            } else {
+              // Placeholder frame
+              var iconPlaceholder = figma.createFrame()
+              iconPlaceholder.name = childSpec.name || 'icon'
+              iconPlaceholder.resize(childSpec.size || 16, childSpec.size || 16)
+              iconPlaceholder.fills = []
+              if (childSpec.visible === false) iconPlaceholder.visible = false
+              parentNode.appendChild(iconPlaceholder)
+              debugLog.push('Icon not found: ' + childSpec.iconName + ', using placeholder')
+            }
+          }
+        }
+      }
+
+      await buildChildren(singleComp, spec.children)
+
+      stats.components++
+      stats.debug = (stats.debug || '') + debugLog.join('\n') + '\n'
+      continue
+    }
+
+    // SVG-based components (selection controls, etc.)
+    if (spec.renderType === 'svg' && spec.variants) {
+      var debugLog: string[] = []
+      debugLog.push(spec.name + ': ' + spec.variants.length + ' SVG variants')
+
+      for (var svi = 0; svi < spec.variants.length; svi++) {
+        var svgVariant = spec.variants[svi]
+        try {
+          var svgNode = figma.createNodeFromSvg(svgVariant.svg)
+          var comp = figma.createComponent()
+          comp.name = svgVariant.name
+          comp.resize(svgVariant.width, svgVariant.height)
+          comp.fills = []
+          comp.clipsContent = false
+
+          var svgKids = []
+          for (var sk = 0; sk < svgNode.children.length; sk++) {
+            svgKids.push(svgNode.children[sk])
+          }
+          for (var sk2 = 0; sk2 < svgKids.length; sk2++) {
+            comp.appendChild(svgKids[sk2])
+            try { svgKids[sk2].constraints = { horizontal: 'SCALE', vertical: 'SCALE' } } catch (e) {}
+          }
+          svgNode.remove()
+
+          variants.push(comp)
+          stats.variants++
+        } catch (e: any) {
+          debugLog.push('FAILED ' + svgVariant.name + ': ' + (e.message || String(e)))
+        }
+      }
+
+      if (variants.length > 0) {
+        var svgCompSet = figma.combineAsVariants(variants, figma.currentPage)
+        svgCompSet.name = spec.name
+        svgCompSet.layoutMode = 'NONE'
+
+        // Layout matching live site: states across columns, other props down rows
+        // Last variant prop is state → columns. Everything else → rows.
+        var vpKeys = Object.keys(spec.variantProperties)
+        var statesKey = vpKeys[vpKeys.length - 1]
+        var statesCount = spec.variantProperties[statesKey].length
+
+        // Calculate row count from non-state props
+        var rowCount = 1
+        for (var vpk = 0; vpk < vpKeys.length - 1; vpk++) {
+          rowCount *= spec.variantProperties[vpKeys[vpk]].length
+        }
+
+        // Find max variant dimensions
+        var maxVW = 0
+        var maxVH = 0
+        for (var vi3 = 0; vi3 < variants.length; vi3++) {
+          if (variants[vi3].width > maxVW) maxVW = variants[vi3].width
+          if (variants[vi3].height > maxVH) maxVH = variants[vi3].height
+        }
+
+        var cellW = maxVW + 32
+        var cellH = maxVH + 32
+        var col2 = 0
+        var row2 = 0
+
+        for (var vi4 = 0; vi4 < variants.length; vi4++) {
+          // Center variant in cell
+          variants[vi4].x = col2 * cellW + (cellW - variants[vi4].width) / 2
+          variants[vi4].y = row2 * cellH + (cellH - variants[vi4].height) / 2
+          col2++
+          if (col2 >= statesCount) {
+            col2 = 0
+            row2++
+          }
+        }
+
+        var setW = statesCount * cellW + 40
+        var setH = rowCount * cellH + 40
+        svgCompSet.resize(setW, setH)
+        svgCompSet.y = componentOffsetY
+        componentOffsetY += setH + 80
+        stats.components++
+        debugLog.push('Layout: ' + statesCount + ' cols x ' + rowCount + ' rows, cell ' + cellW + 'x' + cellH)
+      }
+
+      stats.debug = (stats.debug || '') + debugLog.join('\n') + '\n'
+      continue
+    }
+
+    // Button-style components (existing logic)
     var styleNames = spec.variantProperties['style'] || []
     var sizeNames = spec.variantProperties['size'] || []
     var stateNames = spec.variantProperties['state'] || []

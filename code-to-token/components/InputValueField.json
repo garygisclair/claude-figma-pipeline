@@ -1,0 +1,99 @@
+{
+  "name": "Input Value Field",
+  "renderType": "single",
+  "componentProperties": {
+    "title": { "type": "TEXT", "defaultValue": "Title" },
+    "required": { "type": "BOOLEAN", "defaultValue": false },
+    "optional": { "type": "BOOLEAN", "defaultValue": false },
+    "tooltip": { "type": "BOOLEAN", "defaultValue": false },
+    "value": { "type": "TEXT", "defaultValue": "Value" }
+  },
+  "base": {
+    "layoutMode": "VERTICAL",
+    "counterAxisAlignItems": "MIN",
+    "primaryAxisSizingMode": "AUTO",
+    "counterAxisSizingMode": "AUTO",
+    "itemSpacing": 6,
+    "fontFamily": "Market Sans"
+  },
+  "children": [
+    {
+      "name": "title row",
+      "type": "FRAME",
+      "layoutMode": "HORIZONTAL",
+      "counterAxisAlignItems": "CENTER",
+      "primaryAxisSizingMode": "AUTO",
+      "counterAxisSizingMode": "AUTO",
+      "itemSpacing": 6,
+      "fills": [],
+      "children": [
+        {
+          "name": "label",
+          "type": "FRAME",
+          "layoutMode": "HORIZONTAL",
+          "counterAxisAlignItems": "MIN",
+          "primaryAxisSizingMode": "AUTO",
+          "counterAxisSizingMode": "AUTO",
+          "itemSpacing": 2,
+          "fills": [],
+          "children": [
+            {
+              "name": "title",
+              "type": "TEXT",
+              "fontFamily": "Market Sans",
+              "fontStyle": "Bold",
+              "fontSize": 14,
+              "lineHeight": 20,
+              "textColor": { "var": "Foreground/Primary", "fallback": "#191919" },
+              "characters": "Title",
+              "propertyRef": { "characters": "title" }
+            },
+            {
+              "name": "required",
+              "type": "TEXT",
+              "fontFamily": "Market Sans",
+              "fontStyle": "Bold",
+              "fontSize": 14,
+              "lineHeight": 20,
+              "textColor": { "var": "Foreground/Destructive", "fallback": "#d50b0b" },
+              "characters": "*",
+              "visible": false,
+              "propertyRef": { "visible": "required" }
+            }
+          ]
+        },
+        {
+          "name": "tooltip",
+          "type": "ICON_INSTANCE",
+          "iconName": "information-16",
+          "size": 16,
+          "visible": false,
+          "propertyRef": { "visible": "tooltip" }
+        },
+        {
+          "name": "optional",
+          "type": "TEXT",
+          "fontFamily": "Market Sans",
+          "fontStyle": "Regular",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "textColor": { "var": "Foreground/Secondary", "fallback": "#707070" },
+          "characters": "(optional)",
+          "visible": false,
+          "propertyRef": { "visible": "optional" }
+        }
+      ]
+    },
+    {
+      "name": "value",
+      "type": "TEXT",
+      "fontFamily": "Market Sans",
+      "fontStyle": "Regular",
+      "fontSize": 14,
+      "lineHeight": 20,
+      "textColor": { "var": "Foreground/Secondary", "fallback": "#707070" },
+      "characters": "Value",
+      "propertyRef": { "characters": "value" }
+    }
+  ]
+}

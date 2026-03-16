@@ -1,0 +1,75 @@
+{
+  "name": "Destructive button",
+  "variantProperties": {
+    "style": ["primary", "secondary", "tertiary", "borderless"],
+    "size": ["large", "medium", "small"],
+    "state": ["default", "hover", "pressed", "disabled", "loading"]
+  },
+  "componentProperties": {
+    "label": { "type": "TEXT", "defaultValue": "Button title" },
+    "leading icon?": { "type": "BOOLEAN", "defaultValue": false },
+    "leading icon": { "type": "INSTANCE_SWAP", "defaultName": "edit-16" },
+    "trailing icon?": { "type": "BOOLEAN", "defaultValue": false },
+    "trailing icon": { "type": "INSTANCE_SWAP", "defaultName": "chevron-down-16" },
+    "touch target": { "type": "BOOLEAN", "defaultValue": false }
+  },
+  "base": {
+    "layoutMode": "HORIZONTAL",
+    "primaryAxisAlignItems": "CENTER",
+    "counterAxisAlignItems": "CENTER",
+    "itemSpacing": 8,
+    "minWidth": 80,
+    "cornerRadius": 48,
+    "fontFamily": "Market Sans",
+    "fontWeight": 700,
+    "labelText": "Button title",
+    "clipsContent": true,
+    "iconSize": 16
+  },
+  "sizes": {
+    "large":  { "height": 48, "paddingH": 24, "maxWidth": 480, "fontSize": 16, "lineHeight": 24, "letterSpacing": -0.32, "spinnerSize": 24 },
+    "medium": { "height": 40, "paddingH": 20, "maxWidth": 400, "fontSize": 14, "lineHeight": 20, "letterSpacing": 0,     "spinnerSize": 20 },
+    "small":  { "height": 32, "paddingH": 16, "maxWidth": 320, "fontSize": 14, "lineHeight": 20, "letterSpacing": 0,     "spinnerSize": 16 }
+  },
+  "styles": {
+    "primary": {
+      "fill": { "var": "Background/Destructive", "fallback": "#d50b0b" },
+      "textColor": { "var": "Foreground/On-accent", "fallback": "#ffffff" },
+      "border": null,
+      "stateLayerColor": "#ffffff",
+      "stateOpacity": { "hover": 0.16, "pressed": 0.24 },
+      "disabledFill": { "var": "Background/Disabled", "fallback": "#c7c7c7" },
+      "disabledTextColor": { "var": "Foreground/On-disabled", "fallback": "#ffffff" }
+    },
+    "secondary": {
+      "fill": null,
+      "textColor": { "var": "Foreground/Destructive", "fallback": "#d50b0b" },
+      "border": { "color": { "var": "Foreground/Destructive", "fallback": "#d50b0b" }, "weight": 1 },
+      "stateLayerColor": "#d50b0b",
+      "stateOpacity": { "hover": 0.04, "pressed": 0.08 },
+      "disabledFill": null,
+      "disabledTextColor": { "var": "Foreground/Disabled", "fallback": "#c7c7c7" },
+      "disabledBorderColor": { "var": "Border/Disabled", "fallback": "#c7c7c7" }
+    },
+    "tertiary": {
+      "fill": null,
+      "textColor": { "var": "Foreground/Destructive", "fallback": "#d50b0b" },
+      "border": { "color": { "var": "Border/Medium", "fallback": "#8f8f8f" }, "weight": 1 },
+      "stateLayerColor": "#d50b0b",
+      "stateOpacity": { "hover": 0.04, "pressed": 0.08 },
+      "disabledFill": null,
+      "disabledTextColor": { "var": "Foreground/Disabled", "fallback": "#c7c7c7" },
+      "disabledBorderColor": { "var": "Border/Disabled", "fallback": "#c7c7c7" }
+    },
+    "borderless": {
+      "fill": null,
+      "textColor": { "var": "Foreground/Destructive", "fallback": "#d50b0b" },
+      "border": null,
+      "paddingOverride": { "large": 12, "medium": 10, "small": 8 },
+      "stateLayerColor": "#d50b0b",
+      "stateOpacity": { "hover": 0.04, "pressed": 0.08 },
+      "disabledFill": null,
+      "disabledTextColor": { "var": "Foreground/Disabled", "fallback": "#c7c7c7" }
+    }
+  }
+}

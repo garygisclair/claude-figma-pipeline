@@ -8,7 +8,7 @@ await build({
   entryPoints: ['src/code.ts'],
   bundle: true,
   outfile: 'dist/code.js',
-  target: 'es2015',
+  target: 'es2017',
   format: 'iife',
   logLevel: 'info',
   ...(watch && {

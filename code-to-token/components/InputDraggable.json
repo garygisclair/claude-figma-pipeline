@@ -1,0 +1,23 @@
+{
+  "name": "Input Draggable",
+  "renderType": "single",
+  "componentProperties": {},
+  "base": {
+    "layoutMode": "HORIZONTAL",
+    "primaryAxisAlignItems": "CENTER",
+    "counterAxisAlignItems": "CENTER",
+    "primaryAxisSizingMode": "FIXED",
+    "counterAxisSizingMode": "FIXED",
+    "width": 10,
+    "height": 10,
+    "fontFamily": "Market Sans"
+  },
+  "children": [
+    {
+      "name": "drag icon",
+      "type": "ICON_INSTANCE",
+      "iconName": "hub-draggable-10",
+      "size": 10
+    }
+  ]
+}
