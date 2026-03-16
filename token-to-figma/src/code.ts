@@ -388,6 +388,7 @@ async function importComponents(specs: ComponentSpec[]) {
         singleComp.resize(singleComp.width, spec.base.height)
       }
       if (spec.base.cornerRadius != null) singleComp.cornerRadius = spec.base.cornerRadius
+      if (spec.base.clipsContent != null) singleComp.clipsContent = spec.base.clipsContent
       if (spec.base.fillColor) singleComp.fills = [makeBoundPaint(spec.base.fillColor)]
 
       // Create component properties first
@@ -430,6 +431,14 @@ async function importComponents(specs: ComponentSpec[]) {
             }
             if (childSpec.counterAxisSizingMode) frame.counterAxisSizingMode = childSpec.counterAxisSizingMode as any
             if (childSpec.itemSpacing != null) frame.itemSpacing = childSpec.itemSpacing
+            if (childSpec.paddingTop != null) frame.paddingTop = childSpec.paddingTop
+            if (childSpec.paddingBottom != null) frame.paddingBottom = childSpec.paddingBottom
+            if (childSpec.paddingLeft != null) frame.paddingLeft = childSpec.paddingLeft
+            if (childSpec.paddingRight != null) frame.paddingRight = childSpec.paddingRight
+            if (childSpec.cornerRadius != null) frame.cornerRadius = childSpec.cornerRadius
+            if (childSpec.clipsContent != null) frame.clipsContent = childSpec.clipsContent
+            if (childSpec.fillColor) frame.fills = [makeBoundPaint(childSpec.fillColor)]
+            if (childSpec.width && childSpec.height) frame.resize(childSpec.width, childSpec.height)
             if (childSpec.visible === false) frame.visible = false
             parentNode.appendChild(frame)
 
@@ -520,6 +529,263 @@ async function importComponents(specs: ComponentSpec[]) {
       await buildChildren(singleComp, spec.children)
 
       stats.components++
+      stats.debug = (stats.debug || '') + debugLog.join('\n') + '\n'
+      continue
+    }
+
+    // Declarative variant components (children tree × variant matrix)
+    if (spec.renderType === 'declarative' && spec.children) {
+      var debugLog: string[] = []
+      debugLog.push(spec.name + ': declarative')
+
+      // Generate all variant combinations
+      var vpKeys2 = Object.keys(spec.variantProperties)
+      var combos: Record<string, string>[] = [{}]
+      for (var vk = 0; vk < vpKeys2.length; vk++) {
+        var key = vpKeys2[vk]
+        var vals = spec.variantProperties[key]
+        var newCombos: Record<string, string>[] = []
+        for (var cc = 0; cc < combos.length; cc++) {
+          for (var vv = 0; vv < vals.length; vv++) {
+            var copy = Object.assign({}, combos[cc])
+            copy[key] = vals[vv]
+            newCombos.push(copy)
+          }
+        }
+        combos = newCombos
+      }
+
+      // Load fonts upfront
+      var declFont: FontName = { family: spec.base.fontFamily || 'Inter', style: 'Regular' }
+      try { await figma.loadFontAsync(declFont) } catch (e) {
+        declFont = { family: 'Inter', style: 'Regular' }
+        await figma.loadFontAsync(declFont)
+      }
+      var declFontBold: FontName = { family: spec.base.fontFamily || 'Inter', style: 'Bold' }
+      try { await figma.loadFontAsync(declFontBold) } catch (e) {
+        declFontBold = { family: 'Inter', style: 'Bold' }
+        await figma.loadFontAsync(declFontBold)
+      }
+
+      for (var comboIdx = 0; comboIdx < combos.length; comboIdx++) {
+        var combo = combos[comboIdx]
+        var variantName = vpKeys2.map(function(k) { return k + '=' + combo[k] }).join(', ')
+        var currentState = combo['state'] || 'default'
+
+        var comp = figma.createComponent()
+        comp.name = variantName
+
+        // Base layout
+        if (spec.base.layoutMode) comp.layoutMode = spec.base.layoutMode as any
+        if (spec.base.primaryAxisAlignItems) comp.primaryAxisAlignItems = spec.base.primaryAxisAlignItems as any
+        if (spec.base.counterAxisAlignItems) comp.counterAxisAlignItems = spec.base.counterAxisAlignItems as any
+        if (spec.base.primaryAxisSizingMode) comp.primaryAxisSizingMode = spec.base.primaryAxisSizingMode as any
+        if (spec.base.counterAxisSizingMode) comp.counterAxisSizingMode = spec.base.counterAxisSizingMode as any
+        if (spec.base.itemSpacing != null) comp.itemSpacing = spec.base.itemSpacing
+        if (spec.base.paddingTop != null) comp.paddingTop = spec.base.paddingTop
+        if (spec.base.paddingBottom != null) comp.paddingBottom = spec.base.paddingBottom
+        if (spec.base.paddingLeft != null) comp.paddingLeft = spec.base.paddingLeft
+        if (spec.base.paddingRight != null) comp.paddingRight = spec.base.paddingRight
+        if (spec.base.cornerRadius != null) comp.cornerRadius = spec.base.cornerRadius
+        if (spec.base.clipsContent != null) comp.clipsContent = spec.base.clipsContent
+        if (spec.base.fillColor) comp.fills = [makeBoundPaint(spec.base.fillColor)]
+
+        // State layer on root
+        if (spec.stateLayer) {
+          var slOpacity = spec.stateLayer.opacity[currentState] || 0
+          if (slOpacity > 0) {
+            var sl = figma.createFrame()
+            sl.name = 'state layer'
+            comp.appendChild(sl)
+            sl.layoutPositioning = 'ABSOLUTE'
+            sl.x = 0; sl.y = 0
+            sl.resize(200, 32)
+            sl.constraints = { horizontal: 'STRETCH', vertical: 'STRETCH' }
+            sl.fills = [{ type: 'SOLID', color: hexToFigmaColor(spec.stateLayer.color), opacity: slOpacity }]
+            sl.cornerRadius = spec.base.cornerRadius || 0
+          }
+        }
+
+        // Build children with variant context
+        async function buildDeclChildren(parentNode: FrameNode | ComponentNode, childSpecs: any[], variantCombo: Record<string, string>, state: string) {
+          for (var dci = 0; dci < childSpecs.length; dci++) {
+            var cs = childSpecs[dci]
+
+            // Skip if onlyForVariant doesn't match
+            if (cs.onlyForVariant) {
+              var skip = false
+              for (var ofvKey of Object.keys(cs.onlyForVariant)) {
+                if (variantCombo[ofvKey] !== cs.onlyForVariant[ofvKey]) { skip = true; break }
+              }
+              if (skip) continue
+            }
+
+            if (cs.type === 'FRAME') {
+              var frame = figma.createFrame()
+              frame.name = cs.name || 'frame'
+              frame.fills = cs.fills || []
+              if (cs.layoutMode) frame.layoutMode = cs.layoutMode as any
+              if (cs.primaryAxisAlignItems) frame.primaryAxisAlignItems = cs.primaryAxisAlignItems as any
+              if (cs.counterAxisAlignItems) frame.counterAxisAlignItems = cs.counterAxisAlignItems as any
+              if (cs.primaryAxisSizingMode && cs.primaryAxisSizingMode !== 'FILL') frame.primaryAxisSizingMode = cs.primaryAxisSizingMode as any
+              if (cs.counterAxisSizingMode) frame.counterAxisSizingMode = cs.counterAxisSizingMode as any
+              if (cs.itemSpacing != null) frame.itemSpacing = cs.itemSpacing
+              if (cs.paddingTop != null) frame.paddingTop = cs.paddingTop
+              if (cs.paddingBottom != null) frame.paddingBottom = cs.paddingBottom
+              if (cs.paddingLeft != null) frame.paddingLeft = cs.paddingLeft
+              if (cs.paddingRight != null) frame.paddingRight = cs.paddingRight
+              if (cs.cornerRadius != null) frame.cornerRadius = cs.cornerRadius
+              if (cs.clipsContent != null) frame.clipsContent = cs.clipsContent
+              if (cs.fillColor) frame.fills = [makeBoundPaint(cs.fillColor)]
+              if (cs.width && cs.height) frame.resize(cs.width, cs.height)
+              if (cs.visible === false) frame.visible = false
+              parentNode.appendChild(frame)
+              if (cs.primaryAxisSizingMode === 'FILL' || cs.layoutGrow === 1) frame.layoutGrow = 1
+
+              // Per-child state layer
+              if (cs.stateLayer) {
+                var csSlOpacity = cs.stateLayer.opacity[state] || 0
+                if (csSlOpacity > 0) {
+                  var csSl = figma.createFrame()
+                  csSl.name = 'state layer'
+                  frame.appendChild(csSl)
+                  csSl.layoutPositioning = 'ABSOLUTE'
+                  csSl.x = 0; csSl.y = 0
+                  csSl.resize(cs.width || 24, cs.height || 24)
+                  csSl.constraints = { horizontal: 'STRETCH', vertical: 'STRETCH' }
+                  csSl.fills = [{ type: 'SOLID', color: hexToFigmaColor(cs.stateLayer.color), opacity: csSlOpacity }]
+                  csSl.cornerRadius = cs.cornerRadius || 0
+                }
+              }
+
+              if (cs.children) await buildDeclChildren(frame, cs.children, variantCombo, state)
+            } else if (cs.type === 'TEXT') {
+              var tf: FontName = cs.fontStyle === 'Bold' ? declFontBold : declFont
+              var tn = figma.createText()
+              tn.name = cs.name || 'text'
+              tn.fontName = tf
+              tn.fontSize = cs.fontSize || 14
+              if (cs.lineHeight) tn.lineHeight = { value: cs.lineHeight, unit: 'PIXELS' }
+              if (cs.letterSpacing) tn.letterSpacing = { value: cs.letterSpacing, unit: 'PIXELS' }
+              if (cs.textCase === 'UPPER') tn.textCase = 'UPPER'
+              tn.characters = cs.characters || ''
+              if (cs.textColor) tn.fills = [makeBoundPaint(cs.textColor)]
+              if (cs.visible === false) tn.visible = false
+              parentNode.appendChild(tn)
+              if (cs.layoutGrow === 1) tn.layoutGrow = 1
+            } else if (cs.type === 'ICON_INSTANCE') {
+              var ic = findComponent(cs.iconName)
+              if (ic) {
+                var inst = ic.createInstance()
+                inst.name = cs.name || cs.iconName
+                if (cs.visible === false) inst.visible = false
+                parentNode.appendChild(inst)
+              } else {
+                var ph = figma.createFrame()
+                ph.name = cs.name || 'icon'
+                ph.resize(cs.size || 16, cs.size || 16)
+                ph.fills = []
+                if (cs.visible === false) ph.visible = false
+                parentNode.appendChild(ph)
+              }
+            }
+          }
+        }
+
+        await buildDeclChildren(comp, spec.children, combo, currentState)
+
+        variants.push(comp)
+        stats.variants++
+      }
+
+      // Combine into ComponentSet
+      if (variants.length > 0) {
+        var declCompSet = figma.combineAsVariants(variants, figma.currentPage)
+        declCompSet.name = spec.name
+        declCompSet.layoutMode = 'NONE'
+
+        // Add component properties
+        if (spec.componentProperties) {
+          var declPropKeys: Record<string, string> = {}
+          var cpEntries2 = Object.entries(spec.componentProperties)
+          for (var dpi = 0; dpi < cpEntries2.length; dpi++) {
+            var dpName = (cpEntries2[dpi] as any)[0] as string
+            var dpDef = (cpEntries2[dpi] as any)[1] as any
+            try {
+              if (dpDef.type === 'TEXT') {
+                declPropKeys[dpName] = declCompSet.addComponentProperty(dpName, 'TEXT', dpDef.defaultValue || '')
+                debugLog.push('Created TEXT: ' + dpName)
+              } else if (dpDef.type === 'BOOLEAN') {
+                declPropKeys[dpName] = declCompSet.addComponentProperty(dpName, 'BOOLEAN', dpDef.defaultValue === true)
+                debugLog.push('Created BOOLEAN: ' + dpName)
+              }
+            } catch (e: any) {
+              debugLog.push('FAILED prop ' + dpName + ': ' + e.message)
+            }
+          }
+
+          // Wire property references on all variants' children
+          function wireDecl(node: SceneNode) {
+            if ('children' in node) {
+              for (var wci = 0; wci < (node as any).children.length; wci++) {
+                var wChild = (node as any).children[wci] as SceneNode
+                wireDecl(wChild)
+              }
+            }
+          }
+
+          // Simple recursive wiring by matching child names to propertyRef in spec
+          function findSpecForNode(name: string, specChildren: any[]): any {
+            for (var fsi = 0; fsi < specChildren.length; fsi++) {
+              if (specChildren[fsi].name === name) return specChildren[fsi]
+              if (specChildren[fsi].children) {
+                var found = findSpecForNode(name, specChildren[fsi].children)
+                if (found) return found
+              }
+            }
+            return null
+          }
+
+          for (var wvi = 0; wvi < variants.length; wvi++) {
+            function wireNode(node: SceneNode) {
+              var nodeSpec = findSpecForNode(node.name, spec.children)
+              if (nodeSpec && nodeSpec.propertyRef) {
+                var refs: Record<string, string> = {}
+                for (var rk of Object.keys(nodeSpec.propertyRef)) {
+                  var rpn = nodeSpec.propertyRef[rk]
+                  if (declPropKeys[rpn]) refs[rk] = declPropKeys[rpn]
+                }
+                if (Object.keys(refs).length > 0) {
+                  (node as any).componentPropertyReferences = refs
+                }
+              }
+              if ('children' in node) {
+                for (var wnci = 0; wnci < (node as any).children.length; wnci++) {
+                  wireNode((node as any).children[wnci])
+                }
+              }
+            }
+            wireNode(variants[wvi])
+          }
+        }
+
+        // Layout grid
+        var lastPropKey = vpKeys2[vpKeys2.length - 1]
+        var colCount = spec.variantProperties[lastPropKey].length
+        var dCol = 0, dRow = 0, dMaxW = 0
+        for (var dvi = 0; dvi < variants.length; dvi++) {
+          variants[dvi].x = dCol * 200
+          variants[dvi].y = dRow * 60
+          if (variants[dvi].width > dMaxW) dMaxW = variants[dvi].width
+          dCol++
+          if (dCol >= colCount) { dCol = 0; dRow++ }
+        }
+        declCompSet.resize(colCount * 200 + 40, (dRow + 1) * 60 + 40)
+        declCompSet.y = componentOffsetY
+        componentOffsetY += (dRow + 1) * 60 + 120
+        stats.components++
+      }
+
       stats.debug = (stats.debug || '') + debugLog.join('\n') + '\n'
       continue
     }

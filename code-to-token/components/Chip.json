@@ -1,0 +1,49 @@
+{
+  "name": "Chip",
+  "variantProperties": {
+    "style": ["avatar", "default"],
+    "size": ["standard"],
+    "state": ["default", "hover", "close-hover"]
+  },
+  "componentProperties": {
+    "label": { "type": "TEXT", "defaultValue": "Text Label" },
+    "removable": { "type": "BOOLEAN", "defaultValue": true }
+  },
+  "base": {
+    "layoutMode": "HORIZONTAL",
+    "primaryAxisAlignItems": "CENTER",
+    "counterAxisAlignItems": "CENTER",
+    "itemSpacing": 8,
+    "minWidth": 40,
+    "cornerRadius": 100,
+    "fontFamily": "Market Sans",
+    "fontWeight": 400,
+    "labelText": "Text Label",
+    "clipsContent": true,
+    "iconSize": 12
+  },
+  "sizes": {
+    "standard": { "height": 32, "paddingH": 4, "maxWidth": 999, "fontSize": 12, "lineHeight": 16, "letterSpacing": 0, "spinnerSize": 16 }
+  },
+  "styles": {
+    "avatar": {
+      "fill": { "var": "Background/Tertiary", "fallback": "#eeeeee" },
+      "textColor": { "var": "Foreground/Primary", "fallback": "#191919" },
+      "border": null,
+      "stateLayerColor": "#000000",
+      "stateOpacity": { "hover": 0.04, "pressed": 0 },
+      "disabledFill": null,
+      "disabledTextColor": { "var": "Foreground/Primary", "fallback": "#191919" }
+    },
+    "default": {
+      "fill": { "var": "Background/Tertiary", "fallback": "#eeeeee" },
+      "textColor": { "var": "Foreground/Primary", "fallback": "#191919" },
+      "border": null,
+      "paddingOverride": { "standard": 12 },
+      "stateLayerColor": "#000000",
+      "stateOpacity": { "hover": 0.04, "pressed": 0 },
+      "disabledFill": null,
+      "disabledTextColor": { "var": "Foreground/Primary", "fallback": "#191919" }
+    }
+  }
+}
