@@ -208,6 +208,24 @@ function setStroke(node: GeometryMixin & MinimalStrokesMixin, ref: ColorRef, wei
   node.strokeAlign = 'INSIDE'
 }
 
+/** Resolve a numeric value that may be a variable reference { var, fallback } or a plain number */
+function resolveNumber(val: any): number {
+  if (val == null) return 0
+  if (typeof val === 'number') return val
+  if (typeof val === 'object' && val.fallback != null) return val.fallback
+  return 0
+}
+
+/** Bind a numeric variable to a node property if val is a { var, fallback } object */
+function bindNumberVariable(node: SceneNode, field: string, val: any): void {
+  if (val != null && typeof val === 'object' && val.var) {
+    var variable = findVariable(val.var)
+    if (variable) {
+      node.setBoundVariable(field as any, variable)
+    }
+  }
+}
+
 async function importTokens(data: TokenPayload) {
   const stats = { collections: 0, variables: 0, modes: 0, effectStyles: 0, textStyles: 0 }
 
@@ -378,11 +396,11 @@ async function importComponents(specs: ComponentSpec[]) {
       if (spec.base.counterAxisAlignItems) singleComp.counterAxisAlignItems = spec.base.counterAxisAlignItems as any
       if (spec.base.primaryAxisSizingMode) singleComp.primaryAxisSizingMode = spec.base.primaryAxisSizingMode as any
       if (spec.base.counterAxisSizingMode) singleComp.counterAxisSizingMode = spec.base.counterAxisSizingMode as any
-      if (spec.base.itemSpacing != null) singleComp.itemSpacing = spec.base.itemSpacing
-      if (spec.base.paddingTop != null) singleComp.paddingTop = spec.base.paddingTop
-      if (spec.base.paddingBottom != null) singleComp.paddingBottom = spec.base.paddingBottom
-      if (spec.base.paddingLeft != null) singleComp.paddingLeft = spec.base.paddingLeft
-      if (spec.base.paddingRight != null) singleComp.paddingRight = spec.base.paddingRight
+      if (spec.base.itemSpacing != null) { singleComp.itemSpacing = resolveNumber(spec.base.itemSpacing); bindNumberVariable(singleComp, 'itemSpacing', spec.base.itemSpacing) }
+      if (spec.base.paddingTop != null) { singleComp.paddingTop = resolveNumber(spec.base.paddingTop); bindNumberVariable(singleComp, 'paddingTop', spec.base.paddingTop) }
+      if (spec.base.paddingBottom != null) { singleComp.paddingBottom = resolveNumber(spec.base.paddingBottom); bindNumberVariable(singleComp, 'paddingBottom', spec.base.paddingBottom) }
+      if (spec.base.paddingLeft != null) { singleComp.paddingLeft = resolveNumber(spec.base.paddingLeft); bindNumberVariable(singleComp, 'paddingLeft', spec.base.paddingLeft) }
+      if (spec.base.paddingRight != null) { singleComp.paddingRight = resolveNumber(spec.base.paddingRight); bindNumberVariable(singleComp, 'paddingRight', spec.base.paddingRight) }
       if (spec.base.width) singleComp.resize(spec.base.width, spec.base.height || 20)
       if (spec.base.height && spec.base.counterAxisSizingMode === 'FIXED') {
         singleComp.resize(singleComp.width, spec.base.height)
@@ -390,6 +408,12 @@ async function importComponents(specs: ComponentSpec[]) {
       if (spec.base.cornerRadius != null) singleComp.cornerRadius = spec.base.cornerRadius
       if (spec.base.clipsContent != null) singleComp.clipsContent = spec.base.clipsContent
       if (spec.base.fillColor) singleComp.fills = [makeBoundPaint(spec.base.fillColor)]
+      if (spec.base.strokeColor) {
+        singleComp.strokes = [makeBoundPaint(spec.base.strokeColor)]
+        singleComp.strokeWeight = spec.base.strokeWeight || 1
+        singleComp.strokeAlign = 'INSIDE'
+      }
+      if (spec.base.opacity != null) singleComp.opacity = spec.base.opacity
 
       // Create component properties first
       var singlePropKeys: Record<string, string> = {}
@@ -430,14 +454,20 @@ async function importComponents(specs: ComponentSpec[]) {
               frame.primaryAxisSizingMode = childSpec.primaryAxisSizingMode as any
             }
             if (childSpec.counterAxisSizingMode) frame.counterAxisSizingMode = childSpec.counterAxisSizingMode as any
-            if (childSpec.itemSpacing != null) frame.itemSpacing = childSpec.itemSpacing
-            if (childSpec.paddingTop != null) frame.paddingTop = childSpec.paddingTop
-            if (childSpec.paddingBottom != null) frame.paddingBottom = childSpec.paddingBottom
-            if (childSpec.paddingLeft != null) frame.paddingLeft = childSpec.paddingLeft
-            if (childSpec.paddingRight != null) frame.paddingRight = childSpec.paddingRight
+            if (childSpec.itemSpacing != null) { frame.itemSpacing = resolveNumber(childSpec.itemSpacing); bindNumberVariable(frame, 'itemSpacing', childSpec.itemSpacing) }
+            if (childSpec.paddingTop != null) { frame.paddingTop = resolveNumber(childSpec.paddingTop); bindNumberVariable(frame, 'paddingTop', childSpec.paddingTop) }
+            if (childSpec.paddingBottom != null) { frame.paddingBottom = resolveNumber(childSpec.paddingBottom); bindNumberVariable(frame, 'paddingBottom', childSpec.paddingBottom) }
+            if (childSpec.paddingLeft != null) { frame.paddingLeft = resolveNumber(childSpec.paddingLeft); bindNumberVariable(frame, 'paddingLeft', childSpec.paddingLeft) }
+            if (childSpec.paddingRight != null) { frame.paddingRight = resolveNumber(childSpec.paddingRight); bindNumberVariable(frame, 'paddingRight', childSpec.paddingRight) }
             if (childSpec.cornerRadius != null) frame.cornerRadius = childSpec.cornerRadius
             if (childSpec.clipsContent != null) frame.clipsContent = childSpec.clipsContent
             if (childSpec.fillColor) frame.fills = [makeBoundPaint(childSpec.fillColor)]
+            if (childSpec.strokeColor) {
+              frame.strokes = [makeBoundPaint(childSpec.strokeColor)]
+              frame.strokeWeight = childSpec.strokeWeight || 1
+              frame.strokeAlign = 'INSIDE'
+            }
+            if (childSpec.opacity != null) frame.opacity = childSpec.opacity
             if (childSpec.width && childSpec.height) frame.resize(childSpec.width, childSpec.height)
             if (childSpec.visible === false) frame.visible = false
             parentNode.appendChild(frame)
@@ -446,6 +476,9 @@ async function importComponents(specs: ComponentSpec[]) {
             if (childSpec.primaryAxisSizingMode === 'FILL' || childSpec.layoutGrow === 1) {
               frame.layoutGrow = 1
             }
+            // Layout sizing (HUG/FILL/FIXED) — set after appending
+            if (childSpec.layoutSizingHorizontal) frame.layoutSizingHorizontal = childSpec.layoutSizingHorizontal as any
+            if (childSpec.layoutSizingVertical) frame.layoutSizingVertical = childSpec.layoutSizingVertical as any
 
             // Wire property references on frame (e.g. visibility toggle)
             if (childSpec.propertyRef) {
@@ -478,15 +511,24 @@ async function importComponents(specs: ComponentSpec[]) {
             var textNode = figma.createText()
             textNode.name = childSpec.name || 'text'
             textNode.fontName = textFont
-            textNode.fontSize = childSpec.fontSize || 14
-            if (childSpec.lineHeight) textNode.lineHeight = { value: childSpec.lineHeight, unit: 'PIXELS' }
-            if (childSpec.letterSpacing) textNode.letterSpacing = { value: childSpec.letterSpacing, unit: 'PIXELS' }
+            textNode.fontSize = resolveNumber(childSpec.fontSize) || 14
+            bindNumberVariable(textNode, 'fontSize', childSpec.fontSize)
+            if (childSpec.lineHeight) {
+              textNode.lineHeight = { value: resolveNumber(childSpec.lineHeight), unit: 'PIXELS' }
+              bindNumberVariable(textNode, 'lineHeight', childSpec.lineHeight)
+            }
+            if (childSpec.letterSpacing) {
+              textNode.letterSpacing = { value: resolveNumber(childSpec.letterSpacing), unit: 'PIXELS' }
+              bindNumberVariable(textNode, 'letterSpacing', childSpec.letterSpacing)
+            }
             if (childSpec.textCase === 'UPPER') textNode.textCase = 'UPPER'
             textNode.characters = childSpec.characters || ''
             if (childSpec.textColor) textNode.fills = [makeBoundPaint(childSpec.textColor)]
             if (childSpec.visible === false) textNode.visible = false
             parentNode.appendChild(textNode)
             if (childSpec.layoutGrow === 1) textNode.layoutGrow = 1
+            if (childSpec.layoutSizingHorizontal) textNode.layoutSizingHorizontal = childSpec.layoutSizingHorizontal as any
+            if (childSpec.layoutSizingVertical) textNode.layoutSizingVertical = childSpec.layoutSizingVertical as any
 
             // Wire property references
             if (childSpec.propertyRef) {
@@ -521,6 +563,44 @@ async function importComponents(specs: ComponentSpec[]) {
               if (childSpec.visible === false) iconPlaceholder.visible = false
               parentNode.appendChild(iconPlaceholder)
               debugLog.push('Icon not found: ' + childSpec.iconName + ', using placeholder')
+            }
+          } else if (childSpec.type === 'COMPONENT_INSTANCE') {
+            var ciComp = findComponent(childSpec.componentName)
+            if (ciComp) {
+              var ciInst = ciComp.createInstance()
+              ciInst.name = childSpec.name || childSpec.componentName
+              if (childSpec.visible === false) ciInst.visible = false
+              parentNode.appendChild(ciInst)
+              // Layout sizing after appending
+              if (childSpec.layoutSizingHorizontal) ciInst.layoutSizingHorizontal = childSpec.layoutSizingHorizontal as any
+              if (childSpec.layoutSizingVertical) ciInst.layoutSizingVertical = childSpec.layoutSizingVertical as any
+              // Set component property overrides by matching display name to internal key
+              if (childSpec.overrides) {
+                var instProps = ciInst.componentProperties
+                var propMap: Record<string, string> = {}
+                for (var ipKey of Object.keys(instProps)) {
+                  // Internal keys look like "label#1234:0" — display name is before the #
+                  var displayName = ipKey.split('#')[0]
+                  propMap[displayName] = ipKey
+                }
+                var propsToSet: Record<string, string | boolean> = {}
+                for (var ovKey of Object.keys(childSpec.overrides)) {
+                  var internalKey = propMap[ovKey] || ovKey
+                  propsToSet[internalKey] = childSpec.overrides[ovKey]
+                }
+                try {
+                  ciInst.setProperties(propsToSet)
+                } catch (e: any) {
+                  debugLog.push('Override failed: ' + e.message)
+                }
+              }
+            } else {
+              var ciPlaceholder = figma.createFrame()
+              ciPlaceholder.name = childSpec.name || 'component'
+              ciPlaceholder.resize(childSpec.width || 60, childSpec.height || 30)
+              ciPlaceholder.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 }, opacity: 1 }]
+              parentNode.appendChild(ciPlaceholder)
+              debugLog.push('Component not found: ' + childSpec.componentName + ', using placeholder')
             }
           }
         }
@@ -575,20 +655,36 @@ async function importComponents(specs: ComponentSpec[]) {
         var comp = figma.createComponent()
         comp.name = variantName
 
+        // Find per-variant overrides if spec.variants array exists
+        var variantOverride: any = null
+        if (spec.variants) {
+          for (var voi = 0; voi < spec.variants.length; voi++) {
+            if (spec.variants[voi].name === variantName) { variantOverride = spec.variants[voi]; break }
+          }
+        }
+
         // Base layout
         if (spec.base.layoutMode) comp.layoutMode = spec.base.layoutMode as any
         if (spec.base.primaryAxisAlignItems) comp.primaryAxisAlignItems = spec.base.primaryAxisAlignItems as any
         if (spec.base.counterAxisAlignItems) comp.counterAxisAlignItems = spec.base.counterAxisAlignItems as any
         if (spec.base.primaryAxisSizingMode) comp.primaryAxisSizingMode = spec.base.primaryAxisSizingMode as any
         if (spec.base.counterAxisSizingMode) comp.counterAxisSizingMode = spec.base.counterAxisSizingMode as any
-        if (spec.base.itemSpacing != null) comp.itemSpacing = spec.base.itemSpacing
-        if (spec.base.paddingTop != null) comp.paddingTop = spec.base.paddingTop
-        if (spec.base.paddingBottom != null) comp.paddingBottom = spec.base.paddingBottom
-        if (spec.base.paddingLeft != null) comp.paddingLeft = spec.base.paddingLeft
-        if (spec.base.paddingRight != null) comp.paddingRight = spec.base.paddingRight
+        if (spec.base.itemSpacing != null) { comp.itemSpacing = resolveNumber(spec.base.itemSpacing); bindNumberVariable(comp, 'itemSpacing', spec.base.itemSpacing) }
+        if (spec.base.paddingTop != null) { comp.paddingTop = resolveNumber(spec.base.paddingTop); bindNumberVariable(comp, 'paddingTop', spec.base.paddingTop) }
+        if (spec.base.paddingBottom != null) { comp.paddingBottom = resolveNumber(spec.base.paddingBottom); bindNumberVariable(comp, 'paddingBottom', spec.base.paddingBottom) }
+        if (spec.base.paddingLeft != null) { comp.paddingLeft = resolveNumber(spec.base.paddingLeft); bindNumberVariable(comp, 'paddingLeft', spec.base.paddingLeft) }
+        if (spec.base.paddingRight != null) { comp.paddingRight = resolveNumber(spec.base.paddingRight); bindNumberVariable(comp, 'paddingRight', spec.base.paddingRight) }
         if (spec.base.cornerRadius != null) comp.cornerRadius = spec.base.cornerRadius
         if (spec.base.clipsContent != null) comp.clipsContent = spec.base.clipsContent
-        if (spec.base.fillColor) comp.fills = [makeBoundPaint(spec.base.fillColor)]
+        var rootFill = (variantOverride && variantOverride.fillColor) || spec.base.fillColor
+        if (rootFill) comp.fills = [makeBoundPaint(rootFill)]
+        else comp.fills = []
+        var rootStroke = (variantOverride && variantOverride.strokeColor) || spec.base.strokeColor
+        if (rootStroke) {
+          comp.strokes = [makeBoundPaint(rootStroke)]
+          comp.strokeWeight = (variantOverride && variantOverride.strokeWeight) || spec.base.strokeWeight || 1
+          comp.strokeAlign = 'INSIDE'
+        }
 
         // State layer on root
         if (spec.stateLayer) {
@@ -607,7 +703,7 @@ async function importComponents(specs: ComponentSpec[]) {
         }
 
         // Build children with variant context
-        async function buildDeclChildren(parentNode: FrameNode | ComponentNode, childSpecs: any[], variantCombo: Record<string, string>, state: string) {
+        async function buildDeclChildren(parentNode: FrameNode | ComponentNode, childSpecs: any[], variantCombo: Record<string, string>, state: string, override?: any) {
           for (var dci = 0; dci < childSpecs.length; dci++) {
             var cs = childSpecs[dci]
 
@@ -641,6 +737,8 @@ async function importComponents(specs: ComponentSpec[]) {
               if (cs.visible === false) frame.visible = false
               parentNode.appendChild(frame)
               if (cs.primaryAxisSizingMode === 'FILL' || cs.layoutGrow === 1) frame.layoutGrow = 1
+              if (cs.layoutSizingHorizontal) frame.layoutSizingHorizontal = cs.layoutSizingHorizontal as any
+              if (cs.layoutSizingVertical) frame.layoutSizingVertical = cs.layoutSizingVertical as any
 
               // Per-child state layer
               if (cs.stateLayer) {
@@ -658,18 +756,37 @@ async function importComponents(specs: ComponentSpec[]) {
                 }
               }
 
-              if (cs.children) await buildDeclChildren(frame, cs.children, variantCombo, state)
+              if (cs.children) await buildDeclChildren(frame, cs.children, variantCombo, state, override)
             } else if (cs.type === 'TEXT') {
               var tf: FontName = cs.fontStyle === 'Bold' ? declFontBold : declFont
               var tn = figma.createText()
               tn.name = cs.name || 'text'
               tn.fontName = tf
-              tn.fontSize = cs.fontSize || 14
-              if (cs.lineHeight) tn.lineHeight = { value: cs.lineHeight, unit: 'PIXELS' }
-              if (cs.letterSpacing) tn.letterSpacing = { value: cs.letterSpacing, unit: 'PIXELS' }
-              if (cs.textCase === 'UPPER') tn.textCase = 'UPPER'
-              tn.characters = cs.characters || ''
-              if (cs.textColor) tn.fills = [makeBoundPaint(cs.textColor)]
+              var csFontSize = cs.fontSize || 14
+              tn.fontSize = resolveNumber(csFontSize)
+              bindNumberVariable(tn, 'fontSize', csFontSize)
+              if (cs.lineHeight) {
+                tn.lineHeight = { value: resolveNumber(cs.lineHeight), unit: 'PIXELS' }
+                bindNumberVariable(tn, 'lineHeight', cs.lineHeight)
+              }
+              if (cs.letterSpacing) {
+                tn.letterSpacing = { value: resolveNumber(cs.letterSpacing), unit: 'PIXELS' }
+                bindNumberVariable(tn, 'letterSpacing', cs.letterSpacing)
+              }
+              var oTextCase = (override && override.textCase) || cs.textCase
+              if (oTextCase === 'UPPER') tn.textCase = 'UPPER'
+              tn.characters = (override && override.labelText) || cs.characters || ''
+              var oTextColor = (override && override.textColor) || cs.textColor
+              if (oTextColor) tn.fills = [makeBoundPaint(oTextColor)]
+              // Apply override fontSize if present
+              if (override && override.fontSize) {
+                tn.fontSize = resolveNumber(override.fontSize)
+                bindNumberVariable(tn, 'fontSize', override.fontSize)
+              }
+              if (override && override.letterSpacing && !cs.letterSpacing) {
+                tn.letterSpacing = { value: resolveNumber(override.letterSpacing), unit: 'PIXELS' }
+                bindNumberVariable(tn, 'letterSpacing', override.letterSpacing)
+              }
               if (cs.visible === false) tn.visible = false
               parentNode.appendChild(tn)
               if (cs.layoutGrow === 1) tn.layoutGrow = 1
@@ -688,11 +805,43 @@ async function importComponents(specs: ComponentSpec[]) {
                 if (cs.visible === false) ph.visible = false
                 parentNode.appendChild(ph)
               }
+            } else if (cs.type === 'COMPONENT_INSTANCE') {
+              var ciComp2 = findComponent(cs.componentName)
+              if (ciComp2) {
+                var ciInst2 = ciComp2.createInstance()
+                ciInst2.name = cs.name || cs.componentName
+                if (cs.visible === false) ciInst2.visible = false
+                parentNode.appendChild(ciInst2)
+                if (cs.layoutSizingHorizontal) ciInst2.layoutSizingHorizontal = cs.layoutSizingHorizontal as any
+                if (cs.layoutSizingVertical) ciInst2.layoutSizingVertical = cs.layoutSizingVertical as any
+                if (cs.overrides) {
+                  var instProps2 = ciInst2.componentProperties
+                  var propMap2: Record<string, string> = {}
+                  for (var ipKey2 of Object.keys(instProps2)) {
+                    var displayName2 = ipKey2.split('#')[0]
+                    propMap2[displayName2] = ipKey2
+                  }
+                  var propsToSet2: Record<string, string | boolean> = {}
+                  for (var ovKey2 of Object.keys(cs.overrides)) {
+                    var internalKey2 = propMap2[ovKey2] || ovKey2
+                    propsToSet2[internalKey2] = cs.overrides[ovKey2]
+                  }
+                  try {
+                    ciInst2.setProperties(propsToSet2)
+                  } catch (e: any) {}
+                }
+              } else {
+                var ciPh2 = figma.createFrame()
+                ciPh2.name = cs.name || 'component'
+                ciPh2.resize(cs.width || 60, cs.height || 30)
+                ciPh2.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 }, opacity: 1 }]
+                parentNode.appendChild(ciPh2)
+              }
             }
           }
         }
 
-        await buildDeclChildren(comp, spec.children, combo, currentState)
+        await buildDeclChildren(comp, spec.children, combo, currentState, variantOverride)
 
         variants.push(comp)
         stats.variants++
